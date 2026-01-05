@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CANYON AI Companion</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding-bottom: 0;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden; /* Prevent body scroll */
+        }
+        .feed-container {
+            height: calc(100vh - 56px - 120px); /* Account for navbar and bottom tray */
+            margin-top: 56px; /* Account for fixed navbar */
+            padding-bottom: 120px; /* Space for fixed bottom tray */
+            overflow-y: scroll;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            position: relative;
+        }
+        .screen {
+            width: 100%;
+            min-height: calc(100vh - 56px);
+            position: relative;
+            overflow: hidden;
+        }
+        .messages-container {
+            width: 100%;
+            height: 100%;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        .message-item {
+            display: flex;
+            width: 100%;
+            padding: 0.5rem 0;
+            animation: slideIn 0.3s ease-out;
+        }
+        .message-item.user {
+            justify-content: flex-end;
+        }
+        .message-item.ai {
+            justify-content: flex-start;
+        }
+        .message-bubble {
+            max-width: 80%;
+            padding: 1rem 1.25rem;
+            border-radius: 1.5rem;
+            font-size: 1rem;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+        .message-item.user .message-bubble {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .message-item.ai .message-bubble {
+            background-color: #2d2d2d;
+            color: white;
+        }
+        .screen:has(.carousel-container) {
+            overflow: visible;
+        }
+        .carousel-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            overflow-x: scroll;
+            overflow-y: hidden;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+            touch-action: pan-x pan-y; /* Allow both horizontal and vertical panning */
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+        .carousel-container::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        .carousel-item {
+            min-width: 100%;
+            width: 100%;
+            height: 100%;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            position: relative;
+            flex-shrink: 0;
+            display: flex;
+            align-items: stretch;
+        }
+        .carousel-item .card {
+            width: 100%;
+            height: 100%;
+            border-radius: 0 !important;
+        }
+        .carousel-dots {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .carousel-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.3);
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .carousel-dot.active {
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        .message-bubble {
+            max-width: 80%;
+            word-wrap: break-word;
+            transition: all 0.3s ease-out;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideIn 0.3s ease-out forwards;
+            border-radius: 20px !important;
+            position: relative;
+        }
+        .card {
+            transition: all 0.3s ease-out;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideIn 0.3s ease-out forwards;
+            border-radius: 15px;
+            border: none !important;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .artwork-carousel {
+            position: relative;
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            touch-action: pan-x;
+        }
+        .artwork-carousel::-webkit-scrollbar {
+            display: none;
+        }
+        .artwork-carousel-wrapper {
+            display: flex;
+            gap: 1rem;
+            padding-right: 1rem;
+        }
+        .artwork-carousel-item {
+            min-width: 85%;
+            width: 85%;
+            flex-shrink: 0;
+            scroll-snap-align: start;
+            position: relative;
+        }
+        .artwork-carousel-item .card {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+        .artwork-carousel-item .card > div {
+            height: 100%;
+            width: 100%;
+        }
+        .carousel-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        .carousel-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.3);
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            padding: 0;
+        }
+        .carousel-dot.active {
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        .card-img-top {
+            object-fit: cover;
+            display: block;
+            width: 100%;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+            flex: 1;
+            height: 60%;
+        }
+        .card-body {
+            flex: 0 0 auto;
+        }
+        .object-fit-cover {
+            object-fit: cover;
+        }
+        .rounded-15 {
+            border-radius: 15px !important;
+        }
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .suggestions-container {
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox */
+            border-top: none !important;
+            border-bottom: none !important;
+            margin-top: 0 !important;
+            padding-top: 0.5rem !important;
+        }
+        .fixed-bottom {
+            border-top: none !important;
+            margin-top: 0 !important;
+            background-color: #212529 !important;
+            display: block; /* Show prompt tray */
+        }
+        .fixed-bottom .input-group {
+            border-top: none !important;
+        }
+        /* Cover any gap above the fixed-bottom tray */
+        .fixed-bottom::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: 0;
+            right: 0;
+            height: 20px;
+            background-color: #212529;
+            z-index: -1;
+        }
+        .suggestions-container::-webkit-scrollbar {
+            display: none;
+        }
+        /* Glass-style badge */
+        .glass-badge {
+            background-color: rgba(0, 0, 0, 0.5);
+            -webkit-backdrop-filter: blur(10px) saturate(140%);
+            backdrop-filter: blur(10px) saturate(140%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff !important;
+        }
+        /* Fixed width for countdown badge to prevent resizing */
+        .countdown-badge {
+            width: 130px;
+            display: inline-block;
+            text-align: center;
+        }
+        /* Pin icon and label styling */
+        .pin-container {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            z-index: 10;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .pin-container:hover {
+            opacity: 0.8;
+        }
+        .pin-icon {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.9);
+            transition: all 0.2s;
+        }
+        .pin-icon.bi-geo-alt-fill {
+            color: #ffffff;
+        }
+        .pin-label {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            opacity: 1;
+        }
+        /* Dark mode input placeholder */
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.5) !important;
+        }
+        input:-ms-input-placeholder {
+            color: rgba(255, 255, 255, 0.5) !important;
+        }
+        input::-webkit-input-placeholder {
+            color: rgba(255, 255, 255, 0.5) !important;
+        }
+        /* Timeline styling */
+        .timeline-item {
+            position: relative;
+            padding-left: 2.5rem !important;
+            border: none !important;
+            border-bottom: none !important;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: calc(0.5rem + 0.75rem - 1px);
+            top: 0;
+            bottom: -1px;
+            width: 2px;
+            background-color: #2d2d2d;
+        }
+        .timeline-item:first-child::before {
+            top: 1.5rem;
+        }
+        .timeline-item:last-child::before {
+            bottom: auto;
+            height: 1.5rem;
+        }
+        .timeline-icon {
+            position: absolute;
+            left: 0.5rem;
+            top: 0.5rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #2d2d2d;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        .timeline-time {
+            min-width: 80px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="background-color: #1a1a1a !important;">
+        <div class="container-fluid">
+            <button class="btn btn-link text-white" type="button" data-bs-toggle="offcanvas" data-bs-target="#timelineOffcanvas">
+                <i class="bi bi-list-ul fs-4"></i>
+            </button>
+            <a class="navbar-brand mx-auto" href="#">
+                <img src="assets/canyon-logo-white.svg" alt="CANYON" height="24">
+            </a>
+            <button class="btn btn-link text-white position-relative" type="button" data-bs-toggle="offcanvas" data-bs-target="#notificationsOffcanvas" id="notificationsButton">
+                <i class="bi bi-bell fs-4"></i>
+                <span class="position-absolute top-0 end-0 badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">
+                    0
+                </span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="feed-container" id="feed">
+        <!-- Feed content will be dynamically inserted here -->
+    </div>
+
+    <!-- Bottom Fixed Bar -->
+    <div class="fixed-bottom bg-dark">
+        <div class="suggestions-container px-3 pt-0" id="suggestions">
+            <!-- Suggestions will be dynamically inserted here -->
+        </div>
+        <div class="input-group p-3">
+            <input type="text" class="form-control rounded-pill me-2 bg-dark text-white border-secondary" placeholder="Ask anything" id="userInput" style="color: #ffffff;">
+            <button class="btn btn-outline-light rounded-circle me-2" type="button" id="micButton">
+                <i class="bi bi-mic"></i>
+            </button>
+            <button class="btn btn-outline-light rounded-circle" type="button" id="sendButton">
+                <i class="bi bi-headphones"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Timeline Offcanvas -->
+    <div class="offcanvas offcanvas-start bg-dark text-white" tabindex="-1" id="timelineOffcanvas">
+        <div class="offcanvas-header border-secondary">
+            <h5 class="offcanvas-title text-white">Your Timeline</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            <div class="list-group list-group-flush" id="timelineList">
+                <!-- Timeline items will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Offcanvas -->
+    <div class="offcanvas offcanvas-end bg-dark text-white" tabindex="-1" id="notificationsOffcanvas">
+        <div class="offcanvas-header border-secondary">
+            <h5 class="offcanvas-title text-white">Notifications</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            <div class="list-group list-group-flush" id="notificationsList">
+                <!-- Notifications will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // App state
+        const state = {
+            currentMode: 'arrive', // 'arrive', 'explore', 'enrich'
+            timeline: [],
+            notifications: [],
+            messages: [],
+            luYangDeadline: null,
+            currentLocation: null // Store location when "I'm here" is tapped
+        };
+
+        // DOM Elements
+        const feed = document.getElementById('feed');
+        const suggestionsContainer = document.getElementById('suggestions');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const micButton = document.getElementById('micButton');
+        const timelineList = document.getElementById('timelineList');
+        const notificationsList = document.getElementById('notificationsList');
+
+        // Countdown utilities
+        const COUNTDOWN_INTERVAL_MS = 1000;
+        let countdownTimer = null;
+
+        function formatCountdown(ms) {
+            if (ms <= 0) return 'Now';
+            const totalSeconds = Math.floor(ms / 1000);
+            const m = Math.floor(totalSeconds / 60);
+            const s = totalSeconds % 60;
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function updateCountdownBadges() {
+            const now = Date.now();
+            document.querySelectorAll('.countdown-badge').forEach(badge => {
+                const deadline = Number(badge.dataset.deadline);
+                const prefix = badge.dataset.prefix || '';
+                const suffix = badge.dataset.suffix || '';
+                const msLeft = deadline - now;
+                const core = formatCountdown(msLeft);
+                const text = `${prefix ? prefix + ' ' : ''}${core}${suffix ? ' ' + suffix : ''}`;
+                badge.textContent = text;
+            });
+        }
+
+        function startCountdownTicker() {
+            if (countdownTimer) return;
+            countdownTimer = setInterval(updateCountdownBadges, COUNTDOWN_INTERVAL_MS);
+        }
+
+        // Equalize card image height to match description (card-body) height
+        function equalizeCardSections() {
+            // Use RAF to wait for layout
+            window.requestAnimationFrame(() => {
+                document.querySelectorAll('#feed .card.equalize-2x').forEach(card => {
+                    const img = card.querySelector('img.card-img-top');
+                    const body = card.querySelector('.card-body');
+                    if (!img || !body) return;
+                    // Reset first to recalc natural body height
+                    img.style.height = '';
+                    const bodyHeight = body.getBoundingClientRect().height;
+                    if (bodyHeight > 0) {
+                        img.style.height = (bodyHeight * 2) + 'px';
+                    }
+                });
+            });
+        }
+
+        function attachImageLoadEqualizer(root) {
+            root.querySelectorAll('img.card-img-top').forEach(img => {
+                if (!img.complete) {
+                    img.addEventListener('load', equalizeCardSections, { once: true });
+                }
+            });
+        }
+
+        window.addEventListener('resize', equalizeCardSections);
+
+        // Swipe detection
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+        const minSwipeDistance = 50;
+
+        function handleSwipe() {
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const feed = document.getElementById('feed');
+            const currentScreen = document.querySelector('.screen.active') || document.querySelector('.screen');
+            const carousel = currentScreen?.querySelector('.artwork-carousel') || currentScreen?.querySelector('.carousel-container');
+            
+            // Determine if this is primarily a horizontal or vertical swipe
+            const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+            
+            // Handle horizontal swipes for carousel
+            if (isHorizontal && Math.abs(deltaX) > minSwipeDistance && carousel) {
+                if (deltaX < 0) {
+                    // Swipe left - next carousel item
+                    const cardWidth = carousel.clientWidth * 0.85;
+                    const gap = 16;
+                    const scrollDistance = cardWidth + gap;
+                    const currentIndex = Math.round(carousel.scrollLeft / scrollDistance);
+                    const items = carousel.querySelectorAll('.artwork-carousel-item') || carousel.querySelectorAll('.carousel-item');
+                    if (currentIndex < items.length - 1) {
+                        carousel.scrollTo({
+                            left: (currentIndex + 1) * scrollDistance,
+                            behavior: 'smooth'
+                        });
+                    }
+                } else {
+                    // Swipe right - previous carousel item
+                    const cardWidth = carousel.clientWidth * 0.85;
+                    const gap = 16;
+                    const scrollDistance = cardWidth + gap;
+                    const currentIndex = Math.round(carousel.scrollLeft / scrollDistance);
+                    if (currentIndex > 0) {
+                        carousel.scrollTo({
+                            left: (currentIndex - 1) * scrollDistance,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
+                return; // Don't process vertical swipe if we handled horizontal
+            }
+            
+            // Vertical swipes are now handled by normal scrolling - no snap behavior
+        }
+
+        function updateCarouselDots(carousel, activeIndex) {
+            const dots = carousel.parentElement?.querySelectorAll('.carousel-dot') || document.querySelectorAll('.carousel-dot');
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === activeIndex);
+            });
+        }
+
+        function showSuggestionsScreen() {
+            let suggestionsScreen = document.getElementById('suggestions-screen');
+            if (!suggestionsScreen) {
+                suggestionsScreen = document.createElement('div');
+                suggestionsScreen.id = 'suggestions-screen';
+                suggestionsScreen.className = 'screen';
+                suggestionsScreen.innerHTML = `
+                    <div class="d-flex flex-column justify-content-center align-items-center h-100 p-4">
+                        <h3 class="mb-4 text-white">Suggested Prompts</h3>
+                        <div id="suggestions-list" class="w-100 d-flex flex-column gap-3"></div>
+                    </div>
+                `;
+                document.getElementById('feed').appendChild(suggestionsScreen);
+                updateSuggestionsList();
+            }
+            suggestionsScreen.classList.add('active');
+            // Scroll to suggestions screen naturally
+            setTimeout(() => {
+                suggestionsScreen.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        function updateSuggestionsList() {
+            const suggestionsList = document.getElementById('suggestions-list');
+            if (!suggestionsList) return;
+            const suggestions = ['Order a drink', 'Dinner reservations', 'Artist biography', 'Related works'];
+            suggestionsList.innerHTML = suggestions.map(s => `
+                <button class="btn btn-outline-light btn-lg w-100 text-start">${s}</button>
+            `).join('');
+        }
+        // Initialize the app
+        function init() {
+            // Set a shared countdown deadline for Lu Yang across cards
+            state.luYangDeadline = Date.now() + 10 * 60 * 1000; // 10 minutes from load
+            renderArriveState();
+            setupEventListeners();
+            updateSuggestions();
+            
+            // Add swipe listeners to feed and carousels
+            const feed = document.getElementById('feed');
+            
+            // Attach swipe listeners to feed for vertical navigation
+            feed.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+            
+            feed.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].clientX;
+                touchEndY = e.changedTouches[0].clientY;
+                handleSwipe();
+            }, { passive: true });
+            
+            // Start countdown updates
+            startCountdownTicker();
+            // Initial equalization
+            equalizeCardSections();
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            sendButton.addEventListener('click', handleSendMessage);
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleSendMessage();
+                }
+            });
+            micButton.addEventListener('click', handleMicClick);
+        }
+
+        // Handle sending a message
+        function handleSendMessage() {
+            const message = userInput.value.trim();
+            if (message) {
+                addUserMessage(message);
+                userInput.value = '';
+                // Check if message is about ordering a drink
+                const lowerMessage = message.toLowerCase();
+                if (lowerMessage.includes('order a drink') || lowerMessage.includes('can i order') || lowerMessage.includes('drink')) {
+                    setTimeout(() => {
+                        renderDrinkWidget();
+                    }, 1000);
+                } else {
+                    // Simulate AI response
+                    setTimeout(() => {
+                        addAIMessage("I'm your AI companion. How can I help you explore the exhibition?");
+                    }, 1000);
+                }
+            }
+        }
+
+        // Handle mic button click
+        function handleMicClick() {
+            alert('Microphone access would be requested here in a real implementation');
+        }
+
+        // Add a user message to the feed
+        function addUserMessage(text) {
+            const message = {
+                type: 'user',
+                text: text,
+                timestamp: new Date()
+            };
+            state.messages.unshift(message);
+            const messageId = renderMessage(message);
+            addTimelineEntry(`Sent message: "${text}"`, messageId);
+        }
+
+        // Add an AI message to the feed
+        function addAIMessage(text) {
+            const message = {
+                type: 'ai',
+                text: text,
+                timestamp: new Date()
+            };
+            state.messages.unshift(message);
+            renderMessage(message);
+        }
+
+        // Render drink order widget
+        function renderDrinkWidget() {
+            const drinks = [
+                { name: 'Wine', price: 12, displayPrice: '$12' },
+                { name: 'Beer', price: 8, displayPrice: '$8' },
+                { name: 'Cocktail', price: 15, displayPrice: '$15' },
+                { name: 'Soft Drink', price: 5, displayPrice: '$5' }
+            ];
+
+            const widgetId = `drink-widget-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const widgetElement = document.createElement('div');
+            widgetElement.id = widgetId;
+            const screen = document.createElement('div');
+            screen.className = 'screen';
+            widgetElement.className = 'd-flex h-100 message-container justify-content-start align-items-center';
+            widgetElement.style.padding = '2rem';
+            
+            const widget = document.createElement('div');
+            widget.className = 'message-bubble p-4 rounded-3 text-white';
+            widget.style.backgroundColor = '#2d2d2d';
+            widget.style.maxWidth = '90%';
+            widget.style.width = '90%';
+            widget.style.boxSizing = 'border-box';
+            widget.style.margin = '0 auto';
+            
+            let locationLabel = state.currentLocation || 'pick up at the bar';
+            let locationClass = state.currentLocation ? 'text-white' : 'text-white';
+            let locationIcon = state.currentLocation ? '<i class="bi bi-geo-alt-fill me-2 text-white" style="font-size: 16px;"></i>' : '';
+            
+            widget.innerHTML = `
+                <h5 class="card-title mb-3 text-white">Order a Drink</h5>
+                <div class="mb-3">
+                    ${drinks.map((drink, index) => `
+                        <div class="d-flex justify-content-between align-items-center mb-2 drink-option" style="cursor: pointer;" data-drink-index="${index}" data-drink-price="${drink.price}">
+                            <div class="d-flex align-items-center">
+                                <input type="checkbox" class="form-check-input me-2" id="drink-${index}" style="background-color: #2d2d2d; border-color: rgba(255,255,255,0.3);">
+                                <label for="drink-${index}" class="small text-white mb-0" style="cursor: pointer;">${drink.name}</label>
+                            </div>
+                            <span class="small text-white">${drink.displayPrice}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="border-top border-secondary pt-2 mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-white fw-bold">Total:</span>
+                        <span class="text-white fw-bold" id="drink-total">$0</span>
+                    </div>
+                </div>
+                <div class="border-top border-secondary pt-2 mb-2">
+                    <div class="mb-1">
+                        <span class="text-white-50 small text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">DELIVER TO</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;">
+                        <div class="d-flex align-items-center">
+                            ${locationIcon}
+                            <span class="${locationClass} small">${locationLabel}</span>
+                        </div>
+                        <i class="bi bi-chevron-right text-white-50"></i>
+                    </div>
+                </div>
+                <div class="border-top border-secondary pt-2 mb-3">
+                    <div class="mb-1">
+                        <span class="text-white-50 small text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">PAYMENT METHOD</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-credit-card me-2 text-white"></i>
+                            <span class="text-white small">Mastercard ••• 4923</span>
+                        </div>
+                        <i class="bi bi-chevron-right text-white-50"></i>
+                    </div>
+                </div>
+                <button class="btn btn-outline-light w-100" id="confirm-order-btn">Confirm Order</button>
+            `;
+            
+            widgetElement.appendChild(widget);
+            screen.appendChild(widgetElement);
+            feed.appendChild(screen);
+            
+            // Don't scroll when drink widget appears - let user stay where they are
+            
+            // Function to calculate and update total
+            const updateTotal = () => {
+                const totalElement = widget.querySelector('#drink-total');
+                let total = 0;
+                widget.querySelectorAll('.drink-option input[type="checkbox"]:checked').forEach(checkbox => {
+                    const option = checkbox.closest('.drink-option');
+                    const price = parseFloat(option.dataset.drinkPrice);
+                    total += price;
+                });
+                totalElement.textContent = `$${total}`;
+            };
+            
+            // Add click handlers for drink options
+            widget.querySelectorAll('.drink-option').forEach(option => {
+                const checkbox = option.querySelector('input[type="checkbox"]');
+                const label = option.querySelector('label');
+                
+                // Prevent double-toggle when clicking directly on checkbox or label
+                checkbox.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    updateTotal();
+                });
+                
+                checkbox.addEventListener('change', () => {
+                    updateTotal();
+                });
+                
+                label.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    checkbox.checked = !checkbox.checked;
+                    updateTotal();
+                });
+                
+                // Handle row click (but not if clicking checkbox/label)
+                option.addEventListener('click', (e) => {
+                    if (e.target !== checkbox && e.target !== label) {
+                        checkbox.checked = !checkbox.checked;
+                        updateTotal();
+                    }
+                });
+            });
+            
+            // Add click handler for confirm order button
+            widget.querySelector('#confirm-order-btn').addEventListener('click', () => {
+                const selectedDrinks = [];
+                widget.querySelectorAll('.drink-option input[type="checkbox"]:checked').forEach(checkbox => {
+                    const option = checkbox.closest('.drink-option');
+                    const label = option.querySelector('label').textContent;
+                    selectedDrinks.push(label);
+                });
+                const total = widget.querySelector('#drink-total').textContent;
+                const drinkText = selectedDrinks.length > 0 ? selectedDrinks.join(', ') : 'No drinks selected';
+                addTimelineEntry(`Ordered drinks: ${drinkText} - ${total}`, widgetId);
+                
+                // Add notification for drink delivery
+                const deliveryTime = new Date(Date.now() + 8 * 60 * 1000); // 8 minutes from now
+                const deliveryTimeString = deliveryTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                const location = state.currentLocation;
+                if (location) {
+                    addNotification(`Your drink is on the way! Estimated time of arrival is ${deliveryTimeString} to ${location}`);
+                } else {
+                    addNotification(`Your drink will be ready for you at the bar`);
+                }
+                
+                alert(`Order confirmed! ${selectedDrinks.length > 0 ? `Drinks: ${selectedDrinks.join(', ')}. ` : ''}Total: ${total}`);
+            });
+            
+            // Initialize total
+            updateTotal();
+            
+            // Scroll to bottom
+            setTimeout(() => {
+                feed.scrollTop = feed.scrollHeight;
+            }, 100);
+        }
+
+        // Render a message in the feed
+        function renderMessage(message) {
+            // Get or create messages container
+            let messagesContainer = document.getElementById('messages-container');
+            let messagesScreen = document.getElementById('messages-screen');
+            
+            if (!messagesContainer) {
+                // Create a screen to hold the messages container
+                messagesScreen = document.createElement('div');
+                messagesScreen.className = 'screen';
+                messagesScreen.id = 'messages-screen';
+                
+                messagesContainer = document.createElement('div');
+                messagesContainer.id = 'messages-container';
+                messagesContainer.className = 'messages-container';
+                
+                messagesScreen.appendChild(messagesContainer);
+                feed.appendChild(messagesScreen);
+                
+                // Scroll to messages screen smoothly
+                setTimeout(() => {
+                    messagesScreen.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+            }
+            
+            const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
+            const messageItem = document.createElement('div');
+            messageItem.className = `message-item ${message.type}`;
+            messageItem.id = messageId;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = message.text;
+            
+            messageItem.appendChild(bubble);
+            messagesContainer.appendChild(messageItem);
+            
+            // Smooth scroll to bottom of messages container
+            setTimeout(() => {
+                messagesContainer.scrollTo({
+                    top: messagesContainer.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }, 100);
+            
+            return messageId;
+        }
+
+        // Add an entry to the timeline
+        function addTimelineEntry(text, anchorId = null) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            state.timeline.unshift({ text, time: timeString, anchorId });
+            
+            // Determine icon based on text content
+            let iconClass = 'bi-circle'; // default icon
+            if (text.toLowerCase().includes('drink') || text.toLowerCase().includes('order')) {
+                iconClass = 'bi-cup-straw';
+            } else if (text.toLowerCase().includes('message') || text.toLowerCase().includes('sent')) {
+                iconClass = 'bi-chat-dots';
+            } else if (text.toLowerCase().includes('check') || text.toLowerCase().includes('checked in') || text.toLowerCase().includes('arrived at')) {
+                iconClass = 'bi-geo-alt';
+            } else if (text.toLowerCase().includes('viewed') || text.toLowerCase().includes('details')) {
+                iconClass = 'bi-eye';
+            }
+            
+            const timelineItem = document.createElement('div');
+            timelineItem.className = 'list-group-item bg-dark text-white timeline-item';
+            if (anchorId) {
+                timelineItem.style.cursor = 'pointer';
+                timelineItem.addEventListener('click', () => {
+                    // Close the offcanvas using Bootstrap's data API
+                    const offcanvasElement = document.getElementById('timelineOffcanvas');
+                    if (offcanvasElement) {
+                        const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
+                        if (bsOffcanvas) {
+                            bsOffcanvas.hide();
+                        }
+                    }
+                    // Scroll to the anchor
+                    setTimeout(() => {
+                        const anchor = document.getElementById(anchorId);
+                        if (anchor) {
+                            anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            // Highlight the element briefly
+                            anchor.style.transition = 'background-color 0.3s';
+                            const originalBg = anchor.style.backgroundColor || '';
+                            anchor.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                            setTimeout(() => {
+                                anchor.style.backgroundColor = originalBg;
+                            }, 1000);
+                        }
+                    }, 300);
+                });
+            }
+            timelineItem.innerHTML = `
+                <div class="timeline-icon">
+                    <i class="bi ${iconClass} text-white" style="font-size: 0.75rem;"></i>
+                </div>
+                <div class="d-flex w-100 justify-content-between align-items-start">
+                    <span class="text-white flex-grow-1 me-3">${text}</span>
+                    <small class="text-secondary timeline-time">${timeString}</small>
+                </div>
+            `;
+            timelineList.insertBefore(timelineItem, timelineList.firstChild);
+        }
+
+        // Add a notification
+        function addNotification(text) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            state.notifications.unshift({ text, time: timeString });
+            
+            // Check if it's a drink notification
+            const isDrinkNotification = text.toLowerCase().includes('drink') || text.toLowerCase().includes('on the way');
+            const iconHtml = isDrinkNotification ? '<i class="bi bi-cup-straw me-2 text-white" style="font-size: 0.875rem;"></i>' : '';
+            
+            const notificationItem = document.createElement('div');
+            notificationItem.className = 'list-group-item bg-dark text-white border-secondary';
+            notificationItem.innerHTML = `
+                <div class="d-flex w-100 justify-content-between align-items-start">
+                    <div class="d-flex align-items-start flex-grow-1 me-3">
+                        ${iconHtml}
+                        <span class="text-white">${text}</span>
+                    </div>
+                    <small class="text-secondary timeline-time">${timeString}</small>
+                </div>
+            `;
+            notificationsList.insertBefore(notificationItem, notificationsList.firstChild);
+            
+            // Update notification badge
+            updateNotificationBadge();
+        }
+        
+        // Update notification badge count
+        function updateNotificationBadge() {
+            const badge = document.getElementById('notificationBadge');
+            const count = state.notifications.length;
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // Render the initial "Arrive" state
+        function renderArriveState() {
+            feed.innerHTML = ''; // Clear the feed
+            
+            const screen = document.createElement('div');
+            screen.className = 'screen active';
+            
+            const cardId = `checkin-card-${Date.now()}`;
+            const card = document.createElement('div');
+            card.id = cardId;
+            card.className = 'card position-relative';
+            card.innerHTML = `
+                <div class="position-relative overflow-hidden rounded-15 h-100">
+                    <img src="https://i.ytimg.com/vi/fNr9WqMPGdo/maxresdefault.jpg" class="position-absolute top-0 start-0 w-100 h-100 object-fit-cover" alt="Lu Yang - DOKU, The Binary World (motion capture performance)">
+                    <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(to bottom, rgba(0,0,0,0.75), rgba(0,0,0,0.4));"></div>
+                    <div class="position-absolute top-0 end-0 m-2 d-flex flex-column align-items-end gap-1 z-1">
+                        <span class="badge glass-badge rounded-pill countdown-badge" data-prefix="Starts in" data-suffix="" data-deadline="${state.luYangDeadline}"></span>
+                    </div>
+                    <div class="card-body position-relative text-white text-center d-flex flex-column align-items-center justify-content-center h-100 pt-5">
+                        <p class="card-text h6 text-white text-opacity-75 mb-1">On Now</p>
+                        <h1 class="card-title h4 text-white">DOKU, The Binary World by Lu Yang</h1>
+                        <p class="card-text"><small class="text-white">Performance • Cinematheque</small></p>
+                        <div class="bg-white rounded-3 p-2 d-inline-block w-50" id="checkInBtn" style="cursor: pointer;">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" alt="Check-In QR Code" class="img-fluid d-block mx-auto">
+                        </div>
+                        <div class="small text-white-50 mt-2">Tap QR to simulate scan</div>
+                    </div>
+                </div>
+            `;
+            screen.appendChild(card);
+            feed.appendChild(screen);
+            
+            // Render countdown immediately
+            updateCountdownBadges();
+            
+            // Add event listener to the check-in button
+            const checkInBtn = card.querySelector('#checkInBtn');
+            if (checkInBtn) {
+                checkInBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    state.currentMode = 'explore';
+                    addTimelineEntry('Arrived at CANYON', cardId);
+                    renderExploreState();
+                    updateSuggestions();
+                });
+            }
+        }
+
+        // Render the "Explore" state
+        function renderExploreState() {
+            const exploreCards = [
+                {
+                    image: 'https://i.ytimg.com/vi/fNr9WqMPGdo/maxresdefault.jpg',
+                    title: 'DOKU, The Binary World by Lu Yang',
+                    deadlineMs: state.luYangDeadline,
+                    prefix: 'Starts in',
+                    location: 'Cinematheque',
+                    mediaType: 'Performance'
+                },
+                {
+                    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTi_a4XnqVY4W5Oc_T3hQP22l2Rsy53I4e9JY1p-tJg_w&s',
+                    title: 'Centers by Vito Acconci',
+                    countdownSeconds: 480,
+                    prefix: 'Loops in',
+                    location: 'Gallery 1',
+                    mediaType: 'Video'
+                },
+                {
+                    image: 'https://upload.wikimedia.org/wikipedia/en/c/c1/Super_Mario_Clouds.gif',
+                    title: 'Clouds by Cory Arcangel',
+                    time: 'Installation',
+                    location: 'Gallery 2',
+                    mediaType: 'Installation'
+                }
+            ];
+            
+            // Create a screen for the explore state (full-screen snap)
+            const screen = document.createElement('div');
+            screen.className = 'screen';
+            
+            // Create carousel container
+            const carouselContainer = document.createElement('div');
+            carouselContainer.className = 'artwork-carousel';
+            carouselContainer.id = 'artwork-carousel';
+            carouselContainer.style.width = '100%';
+            carouselContainer.style.display = 'block';
+            
+            const carouselWrapper = document.createElement('div');
+            carouselWrapper.className = 'artwork-carousel-wrapper';
+            carouselWrapper.style.display = 'flex';
+            
+            // Create dots container
+            const dotsContainer = document.createElement('div');
+            dotsContainer.className = 'carousel-dots';
+            
+            exploreCards.forEach((item, index) => {
+                const cardId = `artwork-card-${index}-${Date.now()}`;
+                item.cardId = cardId; // Store ID for later use
+                
+                const card = document.createElement('div');
+                card.id = cardId;
+                card.className = 'card position-relative';
+                card.style.width = '100%';
+                card.style.height = '100%';
+                card.style.margin = '0';
+                
+                let timingBadgeHTML = '';
+                if (item.deadlineMs) {
+                    timingBadgeHTML = `<span class=\"badge glass-badge rounded-pill countdown-badge\" data-prefix=\"${item.prefix || ''}\" data-suffix=\"\" data-deadline=\"${item.deadlineMs}\"></span>`;
+                } else if (item.countdownSeconds) {
+                    const deadline = Date.now() + item.countdownSeconds * 1000;
+                    timingBadgeHTML = `<span class=\"badge glass-badge rounded-pill countdown-badge\" data-prefix=\"${item.prefix || ''}\" data-suffix=\"\" data-deadline=\"${deadline}\"></span>`;
+                } else if (item.time) {
+                    timingBadgeHTML = `<span class=\"badge glass-badge rounded-pill\">${item.time}</span>`;
+                }
+                card.innerHTML = `
+                    <div class="position-relative rounded-15 h-100" style="overflow: hidden; display: flex; flex-direction: column;">
+                        <img src="${item.image}" class="position-absolute top-0 start-0 w-100 h-100" style="object-fit: cover; z-index: 1;" alt="${item.title}">
+                        <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(to right, rgba(0,0,0,0.65), rgba(0,0,0,0.35)); z-index: 2;"></div>
+                        <div class="position-absolute top-0 end-0 m-2 d-flex flex-column align-items-end gap-1" style="z-index: 5;">${timingBadgeHTML}</div>
+                        <div class="pin-container" data-artwork-id="${index}" style="z-index: 5;">
+                            <i class="bi bi-geo-alt pin-icon"></i>
+                            <span class="pin-label">I'm Here</span>
+                        </div>
+                        <div class="position-absolute bottom-0 start-0 end-0 text-white d-flex flex-column justify-content-end" style="padding: 2rem; padding-bottom: 3rem; z-index: 5; pointer-events: none;">
+                            <h5 class="card-title mb-1 text-white" style="font-size: 1.5rem; font-weight: 600; pointer-events: auto;">${item.title}</h5>
+                            <div class="small text-white" style="pointer-events: auto;">${item.mediaType ? item.mediaType : 'Other'} • ${item.location ? item.location : ''}</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add click handler to pin icon
+                const pinContainer = card.querySelector('.pin-container');
+                pinContainer.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent card click
+                    const pinIcon = pinContainer.querySelector('.pin-icon');
+                    // Toggle between outline and filled pin
+                    if (pinIcon.classList.contains('bi-geo-alt-fill')) {
+                        pinIcon.classList.remove('bi-geo-alt-fill');
+                        pinIcon.classList.add('bi-geo-alt');
+                        // Clear location when unpinned
+                        state.currentLocation = null;
+                        // Open learn more card (normal click, add "Viewed details" entry)
+                        showEnrichState(item);
+                    } else {
+                        pinIcon.classList.remove('bi-geo-alt');
+                        pinIcon.classList.add('bi-geo-alt-fill');
+                        // Store location when pinned
+                        state.currentLocation = item.location || null;
+                        // Add timeline entry for arrival
+                        const cardId = item.cardId || card.id;
+                        addTimelineEntry(`Arrived at ${item.location || 'location'}`, cardId);
+                        // Open learn more card (skip timeline entry since we already added "Arrived at")
+                        showEnrichState(item, true);
+                    }
+                });
+                
+                // Add click handler to show enrich state
+                card.addEventListener('click', () => {
+                    showEnrichState(item);
+                });
+                
+                // Wrap card in carousel item
+                const carouselItem = document.createElement('div');
+                carouselItem.className = 'artwork-carousel-item';
+                carouselItem.appendChild(card);
+                carouselWrapper.appendChild(carouselItem);
+                
+                // Create dot
+                const dot = document.createElement('button');
+                dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
+                dot.setAttribute('aria-label', `Go to slide ${index + 1}`);
+                dot.addEventListener('click', () => {
+                    const cardWidth = carouselContainer.clientWidth * 0.85;
+                    const gap = 16;
+                    const scrollDistance = cardWidth + gap;
+                    carouselContainer.scrollTo({
+                        left: index * scrollDistance,
+                        behavior: 'smooth'
+                    });
+                    updateCarouselDots(carouselContainer, index);
+                });
+                dotsContainer.appendChild(dot);
+            });
+            
+            carouselContainer.appendChild(carouselWrapper);
+            
+            // Set explicit widths and heights for carousel items (square aspect ratio)
+            setTimeout(() => {
+                const containerWidth = carouselContainer.clientWidth || window.innerWidth;
+                const items = carouselWrapper.querySelectorAll('.artwork-carousel-item');
+                console.log('Setting up carousel items:', items.length, 'container width:', containerWidth);
+                if (items.length === 0) {
+                    console.error('No carousel items found!');
+                    return;
+                }
+                
+                // Calculate card dimensions - 85% width to show next card, 30% taller than width
+                const cardWidth = containerWidth * 0.85;
+                const cardHeight = cardWidth * 1.3;
+                
+                // Set carousel container height to match card height so it doesn't get cropped
+                carouselContainer.style.height = cardHeight + 'px';
+                carouselContainer.style.minHeight = cardHeight + 'px';
+                
+                items.forEach((item, index) => {
+                    // Set item dimensions - narrower to show next card
+                    item.style.minWidth = cardWidth + 'px';
+                    item.style.width = cardWidth + 'px';
+                    item.style.height = cardHeight + 'px';
+                    item.style.flexShrink = '0';
+                    item.style.display = 'flex';
+                    
+                    const card = item.querySelector('.card');
+                    if (card) {
+                        card.style.height = '100%';
+                        card.style.width = '100%';
+                        card.style.minHeight = cardHeight + 'px';
+                        console.log(`Item ${index}:`, card.offsetWidth, 'x', card.offsetHeight);
+                    } else {
+                        console.error(`Item ${index} has no card!`, item.innerHTML);
+                    }
+                });
+                // Ensure wrapper has correct width - account for gap between cards
+                const gap = 16; // 1rem = 16px
+                const totalWidth = (cardWidth * items.length) + (gap * (items.length - 1)) + 16; // +16 for padding-right
+                carouselWrapper.style.width = totalWidth + 'px';
+                carouselWrapper.style.display = 'flex';
+                console.log('Carousel wrapper width:', totalWidth, 'px');
+                console.log('Carousel container height:', cardHeight, 'px');
+            }, 150);
+            
+            // Update dots on scroll
+            carouselContainer.addEventListener('scroll', () => {
+                const cardWidth = carouselContainer.clientWidth * 0.85;
+                const gap = 16;
+                const scrollDistance = cardWidth + gap;
+                const currentIndex = Math.round(carouselContainer.scrollLeft / scrollDistance);
+                dotsContainer.querySelectorAll('.carousel-dot').forEach((dot, index) => {
+                    dot.classList.toggle('active', index === currentIndex);
+                });
+            });
+            
+            // Add swipe detection
+            let touchStartX = 0;
+            let touchEndX = 0;
+            
+            carouselContainer.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+            }, { passive: true });
+            
+            carouselContainer.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].clientX;
+                handleCarouselSwipe(carouselContainer, touchStartX, touchEndX);
+            }, { passive: true });
+            
+            // Wrap carousel in screen and add to feed
+            screen.appendChild(carouselContainer);
+            screen.appendChild(dotsContainer);
+            feed.appendChild(screen);
+            
+            // Scroll to the new screen and activate it (TikTok-style full-screen snap)
+            setTimeout(() => {
+                screen.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+            
+            // Render countdowns immediately
+            updateCountdownBadges();
+        }
+
+        // Show the "Enrich" state for a specific artwork
+        function showEnrichState(artwork, skipTimelineEntry = false) {
+            state.currentMode = 'enrich';
+            
+            const screen = document.createElement('div');
+            screen.className = 'screen';
+            
+            const enrichCardId = `enrich-card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const enrichCard = document.createElement('div');
+            enrichCard.id = enrichCardId;
+            enrichCard.className = 'card equalize-2x bg-dark text-white';
+            enrichCard.innerHTML = `
+                <div class="position-absolute top-0 end-0 m-2 d-flex flex-column align-items-end gap-1 z-1">
+                    <span class="badge glass-badge rounded-pill">Just Seen</span>
+                </div>
+                <img src="${artwork.image}" class="card-img-top" alt="${artwork.title}">
+                <div class="card-body text-center text-white d-flex flex-column justify-content-center">
+                    <h2 class="card-title h4 text-white">${artwork.title}</h2>
+                    <p class="card-text text-white-50">Explore more about ${artwork.title} and its significance in contemporary art.</p>
+                    <button class="btn btn-light btn-lg w-100" id="learnMoreBtn">Learn More</button>
+                </div>
+            `;
+            
+            screen.appendChild(enrichCard);
+            feed.appendChild(screen);
+            
+            // Scroll to the new screen
+            setTimeout(() => {
+                screen.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+            
+            // Add timeline entry - always use the enrich card ID for "Viewed details"
+            // Skip if called from pin click (which already adds "Arrived at" entry)
+            if (!skipTimelineEntry) {
+                addTimelineEntry(`Viewed details for ${artwork.title}`, enrichCardId);
+            }
+            
+            // Update suggestions
+            updateSuggestions();
+            
+            // Add click handler for the Learn More button
+            enrichCard.querySelector('#learnMoreBtn').addEventListener('click', () => {
+                alert(`More information about ${artwork.title} would be shown here.`);
+            });
+            // Equalize image/body heights
+            attachImageLoadEqualizer(enrichCard);
+            equalizeCardSections();
+        }
+
+        // Update the suggestions based on the current state
+        function updateSuggestions() {
+            let suggestions = [];
+            
+            if (state.currentMode === 'arrive') {
+                suggestions = ['Restrooms and lockers', 'What\'s on', 'Opening hours', 'Getting here'];
+            } else if (state.currentMode === 'explore') {
+                suggestions = ['What should I see first?', 'Can I order a drink?', 'Show me the map', 'Upcoming events'];
+            } else if (state.currentMode === 'enrich') {
+                suggestions = ['Order a drink', 'Dinner reservations', 'Artist biography', 'Related works'];
+            }
+            
+            // Clear existing suggestions
+            suggestionsContainer.innerHTML = '';
+            
+            // Add new suggestions
+            suggestions.forEach(suggestion => {
+                const button = document.createElement('button');
+                button.className = 'btn btn-outline-light btn-sm rounded-pill me-2';
+                button.textContent = suggestion;
+                button.addEventListener('click', () => {
+                    addUserMessage(suggestion);
+                    // Check if it's "Order a drink" or "Can I order a drink?"
+                    if (suggestion.toLowerCase().includes('order a drink') || suggestion.toLowerCase().includes('can i order')) {
+                        setTimeout(() => {
+                            renderDrinkWidget();
+                        }, 1000);
+                    } else {
+                        // Simulate AI response
+                        setTimeout(() => {
+                            addAIMessage(`You asked about "${suggestion}". Here's some information about that.`);
+                        }, 1000);
+                    }
+                });
+                suggestionsContainer.appendChild(button);
+            });
+        }
+
+        // Initialize the app when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
